@@ -5,6 +5,7 @@
 - **PC**: Program Counter
 - **STATUS**: Status flags (validation result, zero flag)
 - **TBASE**: Tally table base address register
+- **SKEY[0-7]**: Secret key storage (bs, r, s, py, px, by, bx, bf)
 
 ## Instruction Summary Table
 
@@ -23,14 +24,13 @@
 | `NEWD`     | 1010   | R-type  | Register district ID (initialize district column) |
 | `ADDT`     | 1011   | R-type  | Add `value` votes to `candID` from `distID`, update total |
 | `OUTT`     | 1100   | R-type  | Output total tally for `candID` to 7-segment display |
-| `FLIP`     | 1101   | R-type  | Flip all bits in register (tag validation) |
-| `SWAP`     | 1110   | R-type  | Swap bit segments between registers (tag validation) |
-| `SHIFT`    | 1111   | R-type  | Rotate left shift register (tag validation) |
-| `BXOR`     | 0001   | R-type  | XOR all blocks together (tag validation) |
+| `SETKEY`   | 1101   | I-type  | Set secret key field for tag generation |
+| `TGEN`     | 1110   | R-type  | Generate tag using secret key parameters |
+| `TVALID`   | 1111   | R-type  | Validate received tag against generated tag |
 | `INSW`     | 0010   | I-type  | Read from switches to register |
 | `OUTLED`   | 0011   | I-type  | Output register to LEDs |
 | `OUT7SEG`  | 0100   | I-type  | Output register to 7-segment display |
-| `CMP`      | 0101   | R-type  | Compare two registers, set STATUS flags |
+| `CMP`      | 1100   | R-type  | Compare two registers, set STATUS flags |
 | `JMP`      | 0110   | J-type  | Unconditional jump |
 | `JEQ`      | 0111   | J-type  | Jump if equal (STATUS.Z = 1) |
 | `JNE`      | 1000   | J-type  | Jump if not equal |
@@ -45,8 +45,11 @@
 ###  R-Type
 Used for arithmetic, logic, validation, tallying, and display.
 ```
-[4-bit opcode][4-bit rd][4-bit rs1][4-bit rs2/imm4]
+[4-bit opcode][4-bit rd][4-bit rs1][4-bit rs2/function]
 ```
+
+**For ALU instruction (opcode 0000)**: rs2 field encodes function:
+- 0000: ADD, 0001: SUB, 0010: AND, 0011: OR, 0100: XOR, 0101: NOT, 0110: SHL (shift left), 0111: SHR (shift right)
 
 ###  I-Type
 Used for memory access and I/O operations.
@@ -54,11 +57,23 @@ Used for memory access and I/O operations.
 [4-bit opcode][4-bit rd][8-bit immediate/address]
 ```
 
+**For IO instruction (opcode 0110)**: immediate field encodes function:
+- 00000000: INSW, 00000001: OUTLED, 00000010: OUT7SEG
+
+**For SETKEY instruction (opcode 0101)**: immediate field encodes:
+- [3-bit field][5-bit value] where field: 0=bs, 1=r, 2=s, 3=py, 4=px, 5=by, 6=bx, 7=bf
+
 ###  J-Type
 Used for control flow.
 ```
-[4-bit opcode][12-bit address]
+[4-bit opcode][12-bit address/condition+address]
 ```
+
+**For JCOND instruction (opcode 1110)**: address field encodes:
+- [2-bit condition][10-bit address] where condition: 00=JEQ, 01=JNE, 10=JVAL
+
+**For SYS instruction (opcode 1111)**: instruction encodes:
+- [4-bit opcode][12-bit function] where function: 000000000000=NOP, 000000000001=HALT
 
 ---
 
@@ -97,7 +112,7 @@ Used for control flow.
 - **Description**: Performs bitwise NOT of rs1, stores result in rd.
 
 ### `CMP rs1, rs2`
-- **Opcode**: `0101`
+- **Opcode**: `1100`
 - **Format**: R-type
 - **Description**: Compares rs1 and rs2, sets STATUS flags (zero flag if equal).
 
@@ -142,25 +157,20 @@ Used for control flow.
 
 ## Tag Validation Operations (for Member 3)
 
-### `FLIP rd, rs`
+### `SETKEY field, value`
 - **Opcode**: `1101`
-- **Format**: R-type
-- **Description**: Flips all bits in register rs, stores result in rd. Part of tag validation process.
+- **Format**: I-type
+- **Description**: Sets secret key field to value. Field encoding: 0=bs, 1=r, 2=s, 3=py, 4=px, 5=by, 6=bx, 7=bf. Configures tag generation parameters per assignment Figure 4(c).
 
-### `SWAP rd, rs, pos, size`
+### `TGEN rd, rs`
 - **Opcode**: `1110`
 - **Format**: R-type
-- **Description**: Swaps bit segments within register. pos = starting position, size = segment size.
+- **Description**: Generates tag for record in rs using stored secret key. Performs complete Block Partition → Flip → Swap → Shift → XOR sequence. Stores result in rd and sets validation flag.
 
-### `SHIFT rd, rs, amount`
+### `TVALID rs1, rs2`
 - **Opcode**: `1111`
 - **Format**: R-type
-- **Description**: Rotate-left-shifts register rs by amount bits, stores in rd.
-
-### `BXOR rd, rs1, rs2`
-- **Opcode**: `0001`
-- **Format**: R-type
-- **Description**: XORs all blocks together for final tag generation. Sets validation flag.
+- **Description**: Compares generated tag (rs1) with received tag (rs2). Sets validation flag in STATUS register if tags match.
 
 ## I/O Operations (for FPGA - Member 5)
 
@@ -215,19 +225,78 @@ Used for control flow.
 
 ---
 
+## Programming Example for Tag Validation
+
+```assembly
+# Configure secret key for tag validation (from assignment Figure 4c)
+SETKEY 0, 1      # Set bs (block select) = 1
+SETKEY 1, 10     # Set r (rotate amount) = 10  
+SETKEY 2, 10     # Set s (segment size) = 10
+SETKEY 3, 1      # Set py (position y) = 1
+SETKEY 4, 0      # Set px (position x) = 0
+SETKEY 5, 1      # Set by (block y) = 1
+SETKEY 6, 1      # Set bx (block x) = 1
+SETKEY 7, 1      # Set bf (flip block) = 1
+
+main_loop:
+# Load record from switches
+IO R1, 0         # Read from switches (INSW)
+
+# Extract district ID (bits 15-14)
+LDI R0, 0xC0     # Load mask 0xC000 (upper 8 bits of immediate)
+ALU R2, R1, R0, 2    # AND: R2 = R1 & mask
+LDI R0, 14       # Shift amount
+ALU R2, R2, R0, 7    # SHR: Shift right to get district ID
+
+# Extract candidate ID (bits 13-12)
+LDI R0, 0x30     # Load mask 0x3000  
+ALU R3, R1, R0, 2    # AND: R3 = R1 & mask
+LDI R0, 12       # Shift amount
+ALU R3, R3, R0, 7    # SHR: Shift right to get candidate ID
+
+# Extract vote count (bits 11-4)
+LDI R0, 0xFF     # Load mask 0x0FF0
+ALU R4, R1, R0, 2    # AND: R4 = R1 & mask  
+LDI R0, 4        # Shift amount
+ALU R4, R4, R0, 7    # SHR: Shift right to get vote count
+
+# Extract received tag (bits 3-0)
+LDI R0, 0x0F     # Load mask 0x000F
+ALU R5, R1, R0, 2    # AND: R5 = R1 & mask (tag in lower bits)
+
+# Generate tag using configured secret key
+TGEN R6, R4      # Generate tag for vote record
+
+# Validate tag
+TVALID R6, R5    # Compare generated vs received tag
+JCOND 1, invalid_tag  # JNE: Jump if validation fails
+
+# Process valid vote
+ADDT R2, R3, R4  # Add votes to tally
+OUTT R3          # Display updated total
+JMP main_loop    # Continue
+
+invalid_tag:
+LDI R0, 0xFF     # Load error pattern
+IO R0, 1         # OUTLED: Light all LEDs as error
+JMP main_loop    # Continue processing
+```
+
 ## Implementation Notes for Team Members
 
 ### For Member 2 (Datapath Design):
 - ALU needs to support: ADD, SUB, AND, OR, XOR, NOT operations
-- Register file: 16 registers, 16-bit wide
+- Register file: 16 general purpose registers, 16-bit wide
 - Memory interface for LOAD/STORE operations
-- Special registers: PC, STATUS, TBASE
+- Special registers: PC, STATUS, TBASE, SKEY[0-7] for secret key storage
+- Consider dedicated tag generation unit that can be pipelined
 
 ### For Member 3 (Tag Validation Logic):
-- Implement FLIP, SWAP, SHIFT, BXOR as separate modules
-- SWAP operation needs bit position and size parameters
-- BXOR sets validation flag in STATUS register
-- Make operations configurable for different tag sizes
+- Implement SETKEY instruction to configure secret key fields (bs, r, s, py, px, by, bx, bf)
+- TGEN instruction performs complete tag generation: Block Partition → Flip → Swap → Shift → XOR
+- Tag generation could be its own pipeline stage for better performance
+- TVALID compares generated vs received tags and sets STATUS validation flag
+- Make tag size and block size configurable via secret key parameters
 
 ### For Member 4 (Testing):
 - Test cases should use basic ALU ops to build complex operations

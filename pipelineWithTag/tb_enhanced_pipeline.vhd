@@ -55,10 +55,10 @@ begin
         wait for clk_period * 4;
         reset_tb <= '0';
 
-        -- Valid record (should light valid_led)
+        -- correct tag generated
         sw_tb <= X"39F3"; wait for clk_period * 4;
 
-        -- Invalid record (wrong tag, should clear valid_led)
+        -- random tag
         sw_tb <= X"39F0"; wait for clk_period * 4;
 
         -- completly random

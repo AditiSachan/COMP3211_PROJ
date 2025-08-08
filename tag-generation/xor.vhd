@@ -2,16 +2,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
 entity xor_block is
-  generic(
-    tag_size : integer := 4  -- Bit-width of each block and the final tag
-  );
+  generic(tag_size : integer := 4);
   port (
     block0 : in std_logic_vector(tag_size - 1 downto 0);
     block1 : in std_logic_vector(tag_size - 1 downto 0);
     block2 : in std_logic_vector(tag_size - 1 downto 0);
     block3 : in std_logic_vector(tag_size - 1 downto 0);
     block4 : in std_logic_vector(tag_size - 1 downto 0);
-    result : out std_logic_vector(tag_size - 1 downto 0)  -- Final XOR result (tag)
+    result : out std_logic_vector(tag_size - 1 downto 0)
   );
 end xor_block;
 

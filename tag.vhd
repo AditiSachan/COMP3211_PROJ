@@ -15,23 +15,6 @@ entity tag is
    );
 end tag;
 
---FLIP---------------------------------------------------------
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-
-entity flip is
-  generic(tag_size : integer);
-  Port (
-    flip_block : in std_logic_vector(tag_size downto 0);
-    output_block : out std_logic_vector(tag_size downto 0)
-   );
-end flip;
-
-architecture behavioural of flip is
-begin
-  output_block <= not flip_block;
-end behavioural;
-
 --SWAP--------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -124,68 +107,62 @@ constant block_count : integer := (tag_size + bit_size + 1) / bit_size + 1;
 constant half_block_count : integer := (block_count - (block_count mod 2))/2;
 constant extended_size : integer := tag_size + adjustment_size;
 
+constant key_bf : integer := 1;
+constant key_py : integer := 0;
+constant key_px : integer := 1;
+constant key_bx : integer := 2;
+constant key_by : integer := 1;
+constant key_s : integer := 2;
+constant key_bs : integer := 3;
+constant key_r : integer := 2;
+
 type block_array is array(0 to block_count - 1) of std_logic_vector(tag_size downto 0);
 
 signal extended_bits : std_logic_vector(extended_size downto 0);
-signal blocks : block_array;
-signal flipped : block_array;
-signal swapped : block_array;
-signal shifted : block_array;
 signal xor_block : std_logic_vector(tag_size downto 0);
 
 begin
+  extended_bits <= incoming_bits & std_logic_vector(to_unsigned(0, adjustment_size))
+    when adjustment_size > 0 else
+    incoming_bits;
 
-extended_bits <= incoming_bits & std_logic_vector(to_unsigned(0, adjustment_size))
-  when adjustment_size > 0 else
-  incoming_bits;
+  process(all)
+    variable blocks : block_array;
+    variable flipped : block_array;
+    variable swapped : block_array;
+    variable shifted : block_array;
+    variable temp : std_logic_vector(tag_size downto 0);
+  begin
+    for i in 0 to block_count - 1 loop
+      blocks(i) := extended_bits((i+1)*tag_size + i downto i*tag_size + i);
+    end loop;
 
-gen_blocks: for i in 0 to block_count - 1 generate
-  blocks(i) <= extended_bits((i+1)*tag_size + i downto i*tag_size + i);
-end generate;
+    blocks(key_bf) := not blocks(key_bf);
 
-gen_flip: for i in 0 to block_count - 1 generate
-  flip_instance: entity work.flip(behavioural)
-    generic map(tag_size => tag_size)
-    port map(
-      flip_block => blocks(i),
-      output_block => flipped(i)
-    );
-end generate;
+    swap_instance: entity work.swap
+      generic map ( tag_size => tag_size )
+      port map (
+        block_x  => blocks(key_bx),
+        block_y  => blocks(key_by),
+        p_x      => key_px,
+        p_y      => key_py,
+        s        => key_s,
+        output_x => blocks(key_bx),
+        output_y => blocks(key_by)
+      )
 
-gen_swaps: for i in 0 to half_block_count - 1 generate
-  swap_instance: entity work.swap(Behavioral)
-    generic map(tag_size => tag_size)
-    port map (
-      block_x  => flipped(2*i),
-      block_y  => flipped(2*i + 1),
-      p_x      => to_unsigned(0, tag_size + 1),
-      p_y      => to_unsigned(0, tag_size + 1),
-      s        => to_unsigned(tag_size + 1, tag_size + 1),
-      output_x => swapped(2*i),
-      output_y => swapped(2*i + 1)
-    );
-end generate;
-
-gen_shift: for i in 0 to block_count - 1 generate
-  shift_instance: entity work.shift(Behavioral)
-  generic map(tag_size => tag_size)
-  port map (
-    r => to_unsigned(0, tag_size + 1),
-    shift_block => swapped(i),
-    output_block => shifted(i)
-  );
-end generate;
-
---Xor
-process(shifted)
-  variable temp : std_logic_vector(tag_size downto 0);
-begin
-  temp := (others => '0');
-  for i in 0 to block_count - 1 loop
-    temp := temp xor shifted(i);
-  end loop;
-  xor_block <= temp;
-end process;
+    shift_instance: entity work.shift 
+      generic map ( tag_size => tag_size )
+      port map (
+        r => key_r,
+        shift_block => blocks(key_bs)
+      )
+    temp := (others => '0');
+    for i in 0 to block_count - 1 loop
+      temp := temp xor shifted(i);
+    end loop;
+    xor_block <= temp;
+  end process;
 
 output_tag <= xor_block;
 

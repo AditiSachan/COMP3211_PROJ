@@ -55,19 +55,15 @@ begin
         wait for clk_period * 4;
         reset_tb <= '0';
 
-        -- Apply vote record 1 (Dist 1, Cand 2, +1 vote, valid tag)
-        sw_tb <= "0100100000011001";  -- Example input with hypothetical tag
-        wait for clk_period * 1;
+        -- Valid record (should light valid_led)
+        sw_tb <= X"39F3"; wait for clk_period * 4;
 
-        -- Apply vote record 2 (Dist 2, Cand 3, +2 vote, valid tag)
-        sw_tb <= "1000110000101010";  -- Another example
-        wait for clk_period * 1;
+        -- Invalid record (wrong tag, should clear valid_led)
+        sw_tb <= X"39F0"; wait for clk_period * 4;
 
-        -- Apply vote record 3 (Dist 1, Cand 2, +5 vote, invalid tag)
-        sw_tb <= "0100100001010000";  -- Should not update tally
-        wait for clk_period * 1;
+        -- completly random
+        sw_tb <= X"4787"; wait for clk_period * 4;
 
-        -- Continue clock cycles for pipeline to process
         wait for clk_period * 20;
 
         -- Simulation end

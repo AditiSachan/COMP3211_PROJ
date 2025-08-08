@@ -32,6 +32,7 @@ entity register_file is
            write_register  : in  std_logic_vector(1 downto 0);
            write_data      : in  std_logic_vector(15 downto 0);
            read_data     : out std_logic_vector(15 downto 0);
+           led : out std_logic_vector(15 downto 0);
             an : out STD_LOGIC_VECTOR(3 downto 0);
             seg : out STD_LOGIC_VECTOR(6 downto 0));
 end register_file;
@@ -54,12 +55,14 @@ type reg_file is array(0 to 3) of std_logic_vector(15 downto 0);
 signal sig_regfile : reg_file;
 
 begin
-    sevenseg : sevenseg
+    sevenseg_inst : sevenseg
     port map( clk  => b_clk, 
-            digit0  => sig_regfile(0),
-            digit1 => sig_regfile(1),
-            digit2 => sig_regfile(2),
-            digit3 => sig_regfile(3));
+            digit0  => sig_regfile(0)(3 downto 0),
+            digit1 => sig_regfile(1)(3 downto 0),
+            digit2 => sig_regfile(2)(3 downto 0),
+            digit3 => sig_regfile(3)(3 downto 0),
+            an => an,
+            seg => seg);
 
     mem_process : process ( reset,
                             clk,

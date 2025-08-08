@@ -8,8 +8,12 @@ entity pipelined_core is
            b_clk    : in  std_logic;
            sw     : in  std_logic_vector(15 downto 0);
            btnC   : in  std_logic;
+           btnL   : in  std_logic;
+           btnU   : in  std_logic;
+           btnD   : in  std_logic;
            an    : out std_logic_vector(3 downto 0);
-           seg   : out std_logic_vector(6 downto 0));
+           seg   : out std_logic_vector(6 downto 0);
+           led  : out std_logic_vector(15 downto 0));
 end pipelined_core;
 
 architecture structural of pipelined_core is
@@ -51,6 +55,7 @@ component register_file is
            write_register  : in  std_logic_vector(1 downto 0);
            write_data      : in  std_logic_vector(15 downto 0);
            read_data     : out std_logic_vector(15 downto 0);
+           led : out std_logic_vector(15 downto 0);
             an : out STD_LOGIC_VECTOR(3 downto 0);
             seg : out STD_LOGIC_VECTOR(6 downto 0));
 end component;
@@ -117,14 +122,39 @@ signal if_id : if_id_reg;
 signal id_ex : id_ex_reg;
 signal ex_wb : ex_wb_reg; 
 signal clk : std_logic;
+signal s_btn : std_logic;
 
 begin
+    -- clk <= b_clk;
     debounce_inst : debounce
     port map (
         clk   => clk,
         noisy_sig  => btnC,
-        clean_sig  => clk
+        clean_sig  => led(1) 
     );
+
+    debounce_inst1 : debounce
+    port map (
+        clk   => clk,
+        noisy_sig  => btnL,
+        clean_sig  => s_btn 
+    );
+
+    led(0) <= s_btn;
+    debounce_in2st : debounce
+    port map (
+        clk   => clk,
+        noisy_sig  => btnU,
+        clean_sig  => led(2)
+    );
+    de3bounce_inst : debounce
+    port map (
+        clk   => clk,
+        noisy_sig  => btnD,
+        clean_sig  => led(3)
+    );
+    clk <= s_btn;
+    -- led(0) <= s_btn;
 
     sig_one_4b <= "0001";
     sig_one_16b <= "0000000000000001";
@@ -156,6 +186,7 @@ begin
                write_register  => ex_wb.instruction(13 downto 12),
                write_data      => ex_wb.cand_total,
                read_data     => id_ex.cand_total,
+               led => led,
                an           => an,
                seg  => seg);
     id_ex.instruction <= if_id.instruction;

@@ -1,240 +1,140 @@
---library IEEE;
---use IEEE.STD_LOGIC_1164.ALL;
---use IEEE.NUMERIC_STD.ALL;
-
---entity tag is
---  generic(
---    tag_size : integer := 4;
---    bit_size : integer := 31
---  );
---  port (
---    incoming_bits : in std_logic_vector(31 downto 0);
---    output_tag    : out std_logic_vector(6 downto 0)  -- padded 4-bit tag
---  );
---end tag;
-
---architecture Behavioral of tag is
-
---  -- Component declarations
---  component flip is
---    generic(tag_size : integer := 4);
---    port (
---      flip_block   : in  std_logic_vector(tag_size - 1 downto 0);
---      output_block : out std_logic_vector(tag_size - 1 downto 0)
---    );
---  end component;
-
---  component swap is
---    generic(tag_size : integer := 4);
---    port (
---      block_x  : in  std_logic_vector(tag_size - 1 downto 0);
---      block_y  : in  std_logic_vector(tag_size - 1 downto 0);
---      p_x      : in  std_logic_vector(tag_size - 1 downto 0);
---      p_y      : in  std_logic_vector(tag_size - 1 downto 0);
---      s        : in  std_logic_vector(tag_size - 1 downto 0);
---      output_x : out std_logic_vector(tag_size - 1 downto 0);
---      output_y : out std_logic_vector(tag_size - 1 downto 0)
---    );
---  end component;
-
---  component shift is
---    generic(tag_size : integer := 4);
---    port (
---      r            : in  std_logic_vector(tag_size - 1 downto 0);
---      shift_block  : in  std_logic_vector(tag_size - 1 downto 0);
---      output_block : out std_logic_vector(tag_size - 1 downto 0)
---    );
---  end component;
-
---  component xor_block is
---    generic(tag_size : integer := 4);
---    port (
---      block0 : in std_logic_vector(tag_size - 1 downto 0);
---      block1 : in std_logic_vector(tag_size - 1 downto 0);
---      block2 : in std_logic_vector(tag_size - 1 downto 0);
---      block3 : in std_logic_vector(tag_size - 1 downto 0);
---      block4 : in std_logic_vector(tag_size - 1 downto 0);
---      result : out std_logic_vector(tag_size - 1 downto 0)
---    );
---  end component;
-
---  -- Signals
---  signal block0, block1, block2, block3, block4     : std_logic_vector(tag_size - 1 downto 0);
---  signal flip0, flip1, flip2, flip3, flip4          : std_logic_vector(tag_size - 1 downto 0);
---  signal swap0, swap1, swap2, swap3, swap4          : std_logic_vector(tag_size - 1 downto 0);
---  signal shift0, shift1, shift2, shift3, shift4     : std_logic_vector(tag_size - 1 downto 0);
---  signal xor_result                                 : std_logic_vector(tag_size - 1 downto 0);
-
---  -- Constant control values (can later be passed from a secret key module)
---  constant px  : std_logic_vector(tag_size - 1 downto 0) := "0000";
---  constant py  : std_logic_vector(tag_size - 1 downto 0) := "0001";
---  constant s   : std_logic_vector(tag_size - 1 downto 0) := "0010";  -- swap 2 bits
---  constant rot : std_logic_vector(tag_size - 1 downto 0) := "0001";  -- rotate by 1
-
---begin
-
---  -- Block partitioning (20 LSBs of incoming_bits, divided into 5×4-bit blocks)
---  block0 <= incoming_bits(3 downto 0);
---  block1 <= incoming_bits(7 downto 4);
---  block2 <= incoming_bits(11 downto 8);
---  block3 <= incoming_bits(15 downto 12);
---  block4 <= incoming_bits(19 downto 16);
-
---  -- Flip stage
---  flip0_inst : flip generic map(tag_size) port map(flip_block => block0, output_block => flip0);
---  flip1_inst : flip generic map(tag_size) port map(flip_block => block1, output_block => flip1);
---  flip2_inst : flip generic map(tag_size) port map(flip_block => block2, output_block => flip2);
---  flip3_inst : flip generic map(tag_size) port map(flip_block => block3, output_block => flip3);
---  flip4_inst : flip generic map(tag_size) port map(flip_block => block4, output_block => flip4);
-
---  -- Swap stage (0<->1, 2<->3), block4 untouched
---  swap01 : swap generic map(tag_size) port map(
---    block_x => flip0, block_y => flip1, p_x => px, p_y => py, s => s,
---    output_x => swap0, output_y => swap1
---  );
-
---  swap23 : swap generic map(tag_size) port map(
---    block_x => flip2, block_y => flip3, p_x => px, p_y => py, s => s,
---    output_x => swap2, output_y => swap3
---  );
-
---  swap4 <= flip4;  -- no swap for block4
-
---  -- Shift stage (rotate-left by 1)
---  shift0_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap0, output_block => shift0);
---  shift1_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap1, output_block => shift1);
---  shift2_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap2, output_block => shift2);
---  shift3_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap3, output_block => shift3);
---  shift4_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap4, output_block => shift4);
-
---  -- XOR tag generation
---  xor_inst : xor_block generic map(tag_size) port map(
---    block0 => shift0,
---    block1 => shift1,
---    block2 => shift2,
---    block3 => shift3,
---    block4 => shift4,
---    result => xor_result
---  );
-
---  -- Output tag: padded to 7 bits (3 leading zeros)
---  output_tag <= "000" & xor_result;
-
---end Behavioral;
-
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
+-- tag.vhd (simple slices + debug taps)
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity tag is
   generic(
-    tag_size : integer := 4;
-    bit_size : integer := 31
+    tag_size  : integer := 4;    -- T
+    bit_size  : integer := 31;   -- record width
+    key_width : integer := 32    -- secret_key width
   );
-  port (
-    incoming_bits : in std_logic_vector(31 downto 0);
-    output_tag    : out std_logic_vector(tag_size - 1 downto 0)  -- Now 4 bits
+  port(
+    incoming_bits : in  std_logic_vector(bit_size-1 downto 0);
+    secret_key    : in  std_logic_vector(key_width-1 downto 0);
+    output_tag    : out std_logic_vector(tag_size-1 downto 0)
   );
 end tag;
 
-architecture Behavioral of tag is
+architecture rtl of tag is
+  ------------------------------------------------------------------------------
+  -- Parameters / types
+  ------------------------------------------------------------------------------
+  constant NUM_BLOCKS : integer := (bit_size + tag_size - 1) / tag_size; -- ceil
+  subtype block_t is std_logic_vector(tag_size-1 downto 0);
+  type block_arr_t is array (0 to NUM_BLOCKS-1) of block_t;
 
+  -- Decoded key fields (probe these in the wave)
+  signal k_bf, k_by, k_bx, k_bs : integer := 0; -- block indices
+  signal k_px, k_py, k_s, k_r   : integer := 0; -- positions/length/rotate
 
-  -- Component declarations
-  component flip is
-    generic(tag_size : integer := 4);
-    port (
-      flip_block   : in  std_logic_vector(tag_size - 1 downto 0);
-      output_block : out std_logic_vector(tag_size - 1 downto 0)
-    );
-  end component;
+  -- Debug taps: packed blocks after each stage (add to waveform)
+  signal stage0, stage1, stage2, stage3 : std_logic_vector(NUM_BLOCKS*tag_size-1 downto 0);
 
-  component swap is
-    generic(tag_size : integer := 4);
-    port (
-      block_x  : in  std_logic_vector(tag_size - 1 downto 0);
-      block_y  : in  std_logic_vector(tag_size - 1 downto 0);
-      p_x      : in  std_logic_vector(tag_size - 1 downto 0);
-      p_y      : in  std_logic_vector(tag_size - 1 downto 0);
-      s        : in  std_logic_vector(tag_size - 1 downto 0);
-      output_x : out std_logic_vector(tag_size - 1 downto 0);
-      output_y : out std_logic_vector(tag_size - 1 downto 0)
-    );
-  end component;
+  -- convenience
+  constant HI : integer := key_width - 1;
 
-  component shift is
-    generic(tag_size : integer := 4);
-    port (
-      r            : in  std_logic_vector(tag_size - 1 downto 0);
-      shift_block  : in  std_logic_vector(tag_size - 1 downto 0);
-      output_block : out std_logic_vector(tag_size - 1 downto 0)
-    );
-  end component;
+  ------------------------------------------------------------------------------
+  -- Helpers
+  ------------------------------------------------------------------------------
+  -- Pack block array into a single vector (A0 goes in bits [3:0], A1 in [7:4], ...)
+  function pack_blocks(b : block_arr_t) return std_logic_vector is
+    variable v : std_logic_vector(NUM_BLOCKS*tag_size-1 downto 0);
+  begin
+    for i in 0 to NUM_BLOCKS-1 loop
+      v((i+1)*tag_size-1 downto i*tag_size) := b(i);
+    end loop;
+    return v;
+  end function;
 
-  component xor_block is
-    generic(tag_size : integer := 4);
-    port (
-      block0 : in std_logic_vector(tag_size - 1 downto 0);
-      block1 : in std_logic_vector(tag_size - 1 downto 0);
-      block2 : in std_logic_vector(tag_size - 1 downto 0);
-      block3 : in std_logic_vector(tag_size - 1 downto 0);
-      block4 : in std_logic_vector(tag_size - 1 downto 0);
-      result : out std_logic_vector(tag_size - 1 downto 0)
-    );
-  end component;
-
-  -- Signals
-  signal block0, block1, block2, block3, block4     : std_logic_vector(tag_size - 1 downto 0);
-  signal flip0, flip1, flip2, flip3, flip4          : std_logic_vector(tag_size - 1 downto 0);
-  signal swap0, swap1, swap2, swap3, swap4          : std_logic_vector(tag_size - 1 downto 0);
-  signal shift0, shift1, shift2, shift3, shift4     : std_logic_vector(tag_size - 1 downto 0);
-  signal xor_result                                 : std_logic_vector(tag_size - 1 downto 0);
-
-  -- Constants (for swap and shift)
-  constant px  : std_logic_vector(tag_size - 1 downto 0) := "0000";
-  constant py  : std_logic_vector(tag_size - 1 downto 0) := "0001";
-  constant s   : std_logic_vector(tag_size - 1 downto 0) := "0010";
-  constant rot : std_logic_vector(tag_size - 1 downto 0) := "0001";
+  -- rotate-left by r bits
+  function rotl(v : block_t; r_in : integer) return block_t is
+    variable n : integer := v'length;
+    variable r : integer := r_in mod n;
+  begin
+    if r = 0 then
+      return v;
+    else
+      return v(n-1-r downto 0) & v(n-1 downto n-r);
+    end if;
+  end function;
 
 begin
+  ------------------------------------------------------------------------------
+  -- SIMPLE key decode (top 20 bits, MSB→LSB = [bf(3)|by(3)|bx(3)|py(2)|px(2)|s(2)|r(2)|bs(3)])
+  -- For TAG_SIZE=4 → px/py/s/r are 2 bits; NUM_BLOCKS=8 → bf/by/bx/bs are 3 bits.
+  ------------------------------------------------------------------------------
+  k_bf <= to_integer(unsigned(secret_key(HI      downto HI-2)))  mod NUM_BLOCKS;
+  k_by <= to_integer(unsigned(secret_key(HI-3    downto HI-5)))  mod NUM_BLOCKS;
+  k_bx <= to_integer(unsigned(secret_key(HI-6    downto HI-8)))  mod NUM_BLOCKS;
+  k_py <= to_integer(unsigned(secret_key(HI-9    downto HI-10))) mod tag_size;
+  k_px <= to_integer(unsigned(secret_key(HI-11   downto HI-12))) mod tag_size;
+  k_s  <= to_integer(unsigned(secret_key(HI-13   downto HI-14))) mod tag_size; -- 0 => full block (handled below)
+  k_r  <= to_integer(unsigned(secret_key(HI-15   downto HI-16))) mod tag_size;
+  k_bs <= to_integer(unsigned(secret_key(HI-17   downto HI-19))) mod NUM_BLOCKS;
 
-  -- Block Partitioning
-  block0 <= incoming_bits(3 downto 0);
-  block1 <= incoming_bits(7 downto 4);
-  block2 <= incoming_bits(11 downto 8);
-  block3 <= incoming_bits(15 downto 12);
-  block4 <= (others => '0');  -- Can also extract bits 19 downto 16 if needed
+  ------------------------------------------------------------------------------
+  -- Main combinational datapath
+  ------------------------------------------------------------------------------
+  process(incoming_bits, k_bf, k_by, k_bx, k_py, k_px, k_s, k_r, k_bs)
+    variable padded : std_logic_vector(NUM_BLOCKS*tag_size-1 downto 0);
+    variable blks   : block_arr_t;
+    variable acc    : unsigned(tag_size-1 downto 0);
+    variable i      : integer;
 
-  -- Flip components
-  flip0_inst : flip generic map(tag_size) port map(flip_block => block0, output_block => flip0);
-  flip1_inst : flip generic map(tag_size) port map(flip_block => block1, output_block => flip1);
-  flip2_inst : flip generic map(tag_size) port map(flip_block => block2, output_block => flip2);
-  flip3_inst : flip generic map(tag_size) port map(flip_block => block3, output_block => flip3);
-  flip4_inst : flip generic map(tag_size) port map(flip_block => block4, output_block => flip4);
+    -- swap segments between two blocks; px/py count from LSB (rightmost)
+    procedure swap_segments(
+      variable bx : inout block_t;
+      variable by : inout block_t;
+      px_in, py_in, s_in : in integer
+    ) is
+      variable n  : integer := tag_size;
+      variable s  : integer := s_in mod n;
+      variable px : integer := px_in mod n;
+      variable py : integer := py_in mod n;
+      variable xi, yi : integer;
+      variable tmp : std_logic;
+    begin
+      if s = 0 then s := n; end if;  -- interpret s=0 as full-block swap
+      for k in 0 to s-1 loop
+        -- Convert LSB-based position to MSB..LSB string index
+        xi := (n - 1) - ((px + k) mod n);
+        yi := (n - 1) - ((py + k) mod n);
+        tmp    := bx(xi);
+        bx(xi) := by(yi);
+        by(yi) := tmp;
+      end loop;
+    end procedure;
 
-  -- Swap components
-  swap01 : swap generic map(tag_size) port map(block_x => flip0, block_y => flip1, p_x => px, p_y => py, s => s, output_x => swap0, output_y => swap1);
-  swap23 : swap generic map(tag_size) port map(block_x => flip2, block_y => flip3, p_x => px, p_y => py, s => s, output_x => swap2, output_y => swap3);
-  swap4 <= flip4;
+  begin
+    -- Left-pad MSBs with zeros to a multiple of tag_size
+    padded := (others => '0');
+    padded(bit_size-1 downto 0) := incoming_bits;
 
-  -- Shift components
-  shift0_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap0, output_block => shift0);
-  shift1_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap1, output_block => shift1);
-  shift2_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap2, output_block => shift2);
-  shift3_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap3, output_block => shift3);
-  shift4_inst : shift generic map(tag_size) port map(r => rot, shift_block => swap4, output_block => shift4);
+    -- Partition: A0 is the RIGHTMOST 4 bits (LSB side)
+    for i in 0 to NUM_BLOCKS-1 loop
+      blks(i) := padded((i+1)*tag_size-1 downto i*tag_size);  -- i=0 => bits(3 downto 0)
+    end loop;
+    stage0 <= pack_blocks(blks);
 
-  -- XOR result (final tag)
-  xor_inst : xor_block generic map(tag_size) port map(
-    block0 => shift0,
-    block1 => shift1,
-    block2 => shift2,
-    block3 => shift3,
-    block4 => shift4,
-    result => xor_result
-  );
+    -- Flip
+    blks(k_bf) := not blks(k_bf);
+    stage1 <= pack_blocks(blks);
 
-  -- Output tag (no padding now)
-  output_tag <= xor_result;
+    -- Swap
+    swap_segments(blks(k_bx), blks(k_by), k_px, k_py, k_s);
+    stage2 <= pack_blocks(blks);
 
-end Behavioral;
+    -- Shift (rotate-left)
+    blks(k_bs) := rotl(blks(k_bs), k_r);
+    stage3 <= pack_blocks(blks);
+
+    -- XOR -> tag
+    acc := (others => '0');
+    for i in 0 to NUM_BLOCKS-1 loop
+      acc := acc xor unsigned(blks(i));
+    end loop;
+    output_tag <= std_logic_vector(acc);
+  end process;
+
+end rtl;

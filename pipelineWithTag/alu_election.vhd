@@ -6,9 +6,10 @@ use IEEE.std_logic_misc.all;
 
 entity alu_election is
     generic ( N        : integer := 16;
-              T        : integer := 8;
-              BF       : integer;      
-              R        : integer );
+              T        : integer := 4;  
+              b_size : integer := 31;
+              secret_key_width : integer := 32 );
+              -- ----------------------------------
     port ( opcode    : in  std_logic_vector(3 downto 0);
            src_a     : in  std_logic_vector(N-1 downto 0);
            src_b     : in  std_logic_vector(N-1 downto 0);
@@ -25,17 +26,26 @@ end alu_election;
 
 architecture behavioural of alu_election is
 
-    component tag_election is
-        generic ( N : integer := 16; T : integer := 8;
-                  BF : std_logic_vector(7 downto 0) := "00000001";
-                  BX, BY, PX, PY, S, BS, R : integer );
-        port ( record_in : in  std_logic_vector(N-1 downto 0);
-               tag_out   : out std_logic_vector(T-1 downto 0);
-               debug_padded : out std_logic_vector(((N+T-1)/T)*T-1 downto 0);
-               debug_flipped : out std_logic_vector(((N+T-1)/T)*T-1 downto 0);
-               debug_swapped : out std_logic_vector(((N+T-1)/T)*T-1 downto 0);
-               debug_shifted : out std_logic_vector(((N+T-1)/T)*T-1 downto 0) );
+    -- MORRIS: Tag generation integration
+    component tag is
+      generic(
+        tag_size  : integer := 4;    -- T
+        bit_size  : integer := 31;   -- record width
+        key_width : integer := 32    -- secret_key width
+      );
+      port(
+        incoming_bits : in  std_logic_vector(bit_size-1 downto 0);
+        secret_key    : in  std_logic_vector(key_width-1 downto 0);
+        output_tag    : out std_logic_vector(tag_size-1 downto 0)
+      );
     end component;
+    
+    
+    signal gen_record : std_logic_vector(b_size-1 downto 0);
+    signal p_secret_key : std_logic_vector(secret_key_width-1 downto 0) :=
+                            x"003101A0";  -- 32 bits in hex
+    ---------------------------------------------------------------------
+    
 
     signal tag_output : std_logic_vector(T-1 downto 0);
     signal zero : std_logic_vector(N-1 downto 0);
@@ -63,21 +73,17 @@ begin
     branch <= '1' when ( (opcode = OP_BEQ and src_a = src_b) or
                          (opcode = OP_BEQZ and src_a = zero) or
                          (opcode = OP_B) ) else '0';
+    
+    -- MORRIS: Tag generation integration
+    gen_record <= (30 downto 12 => '0') & src_a(11 downto 0);
 
-    -- Enhanced tag generator using your components with election parameters
-    tag_generator : tag_election 
-    generic map ( N => N, T => T, 
-                  BF => "00000001",  -- Example: flip block 0
-                  BX => 0, BY => 1,  -- Swap blocks 0 and 1
-                  PX => 0, PY => 1,  -- Swap positions
-                  S => 2,            -- Segment size
-                  BS => 1, R => R )  -- Shift block 1 by R
-    port map ( record_in => src_a, 
-               tag_out => tag_output,
-               debug_padded => debug_padded,
-               debug_flipped => debug_flipped,
-               debug_swapped => debug_swapped,
-               debug_shifted => debug_shifted );
+    
+    tag_generation: tag port map (
+        incoming_bits => gen_record,
+        secret_key    => p_secret_key,
+        output_tag    => tag_output
+      );
+    --------------------------------------------------------------  
 
     alu_process : process (opcode, src_a, src_b, tag_output) is
         variable record_data : std_logic_vector(N-1 downto 0);
@@ -95,12 +101,10 @@ begin
         
         case opcode is
             when OP_PAR =>
-                -- Parity calculation (your original)
                 output(N-1 downto 1) <= (others => '0');
                 output(0) <= xor_reduce(src_a);
                 
             when OP_TAG =>
-                -- Legacy tag operation (your original, keeping for compatibility)
                 output(T-1 downto 0) <= tag_output;
                 output(N-1 downto T) <= (others => '0');
                 

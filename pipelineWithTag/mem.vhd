@@ -52,7 +52,7 @@ begin
             -- initial values of the data memory : reset to zero 
             var_data_mem := (others => (others => '0'));
 
-        elsif (falling_edge(clk) and memput = '1') then
+        elsif (rising_edge(clk) and memput = '1') then
             -- memory writes on the falling clock edge
             var_data_mem(write_head) := data1_in;
             var_data_mem(write_head + 1) := data2_in;

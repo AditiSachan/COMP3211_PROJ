@@ -97,9 +97,9 @@ end component;
 
 component alu_election is
     generic ( N        : integer := 16;
-              T        : integer := 8;
-              BF       : integer;      
-              R        : integer );
+              T        : integer := 4;  
+              b_size   : integer := 31;
+              secret_key_width : integer := 32 );
     port ( opcode    : in  std_logic_vector(3 downto 0);
            src_a     : in  std_logic_vector(N-1 downto 0);
            src_b     : in  std_logic_vector(N-1 downto 0);
@@ -112,6 +112,7 @@ component alu_election is
            tally_increment : out std_logic_vector(7 downto 0);
            tag_valid    : out std_logic );
 end component;
+
 
 component mem is
     generic (N: integer := 16; CORE_NO: integer := 1);
@@ -501,7 +502,7 @@ begin
         data_out   => ackn_data );
 
     alu_enhanced : alu_election
-    generic map ( N => N, T=> T, BF => BF, R => R )
+    generic map ( N => N, T => 4, b_size => 31, secret_key_width => 32 )
     port map ( opcode        => ex_sig_opcode,
                src_a         => ex_sig_alusrc_A,
                src_b         => ex_sig_alusrc_B,

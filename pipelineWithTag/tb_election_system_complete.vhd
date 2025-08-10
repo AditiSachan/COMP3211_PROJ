@@ -10,7 +10,7 @@ end tb_election_system_complete;
 architecture testbench of tb_election_system_complete is
     
     -- Component declaration
-    component asp is
+    component asp_no_buffer is
         generic ( N  : integer := 16;
                   T  : integer := 8;
                   BF : integer := 1;      
@@ -51,7 +51,7 @@ begin
     end process;
 
     -- Unit Under Test instantiation
-    uut : asp
+    uut : asp_no_buffer
     generic map (N => 16, T => 8, BF => 1, R => 2)
     port map (
         reset => reset,
@@ -241,14 +241,14 @@ begin
         if passed_tests = total_tests then
             write(l, string'(""));
             writeline(output, l);
-            write(l, string'("🎉 ALL TESTS PASSED! 🎉"));
+            write(l, string'("? ALL TESTS PASSED! ?"));
             writeline(output, l);
             write(l, string'("Election system working correctly!"));
             writeline(output, l);
         else
             write(l, string'(""));
             writeline(output, l);
-            write(l, string'("❌ Some tests failed."));
+            write(l, string'("? Some tests failed."));
             writeline(output, l);
         end if;
         

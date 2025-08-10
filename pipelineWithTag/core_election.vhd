@@ -1,5 +1,6 @@
 ---------------------------------------------------------------------------
 -- core_election.vhd - Enhanced Core with Election Tallying System
+-- Based on your existing core.vhd with election extensions
 ---------------------------------------------------------------------------
 
 library IEEE;
@@ -28,6 +29,7 @@ end core_election;
 
 architecture structural of core_election is
 
+-- All your existing component declarations (keeping them identical)
 component program_counter is
     port ( reset    : in  std_logic;
            stall    : in std_logic;

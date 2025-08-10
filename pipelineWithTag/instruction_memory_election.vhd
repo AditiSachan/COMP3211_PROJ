@@ -19,7 +19,7 @@ begin
         variable var_insn_mem : mem_array;
         variable var_addr     : integer;
     begin
-        if (falling_edge(reset)) then
+        if (reset = '1') then
             if (CORE_NO = 1) then
                 -- Election Center Program
                 -- Loop: Get record -> Validate tag -> Update tally -> Acknowledge

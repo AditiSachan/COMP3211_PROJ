@@ -1,5 +1,5 @@
 input->1111000000000000: district: 0, candidate: 0, tally: 0, tag: 1111
 input->0101010101100111: district: 3, candidate: 1, tally: 86, tag: 0101
-input->0111000000000001: district: 1, candidate: 0, tally: 0, tag: 0111
-input->1111010110100101: district: 1, candidate: 1, tally: 90, tag: 1111
-input->0100111111111111: district: 3, candidate: 3, tally: 255, tag: 0100
+input->1011000000000001: district: 1, candidate: 0, tally: 0, tag: 1011
+input->0101010110100101: district: 1, candidate: 1, tally: 90, tag: 0101
+input->1000111111111111: district: 3, candidate: 3, tally: 255, tag: 1000

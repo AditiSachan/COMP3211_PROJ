@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------
--- sign_extend_4to16.vhd - Sign-Extend A 4-bit Value to A 16-bit Value
+-- mux_2to1_16b.vhd - 16-bit 2-to-1 Multiplexer Implementation
 -- 
 --
 -- Copyright (C) 2006 by Lih Wen Koh (lwkoh@cse.unsw.edu.au)
@@ -22,25 +22,35 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
-entity sign_extend_4to16 is
-    port ( data_in  : in  std_logic_vector(3 downto 0);
-           data_out : out std_logic_vector(15 downto 0) );
-end sign_extend_4to16;
+entity mux_5to1_Nb is
+    generic (N: integer := 16);
+    port ( mux_select : in  std_logic_vector(2 downto 0);
+           data_a     : in  std_logic_vector(N-1 downto 0);
+           data_b     : in  std_logic_vector(N-1 downto 0);
+           data_c     : in  std_logic_vector(N-1 downto 0);
+           data_d     : in  std_logic_vector(N-1 downto 0);
+           data_e     : in  std_logic_vector(N-1 downto 0);
+           data_out   : out std_logic_vector(N-1 downto 0) );
+end mux_5to1_Nb;
 
-architecture behavioral of sign_extend_4to16 is
+architecture behavioral of mux_5to1_Nb is
 
 begin
-    
-    sign_extend : process ( data_in ) is
+    mux_process : process (mux_select, data_a, data_b, data_c, data_d, data_e) is
     begin
-        data_out(3 downto 0) <= data_in(3 downto 0);
-
-        -- the extended bits take on the value of the most significant
-        -- bit (MSB) of data_in
-        for i in 15 downto 4 loop
-            data_out(i) <= data_in(3);
-        end loop;
-
+        case mux_select is
+            when "000" =>
+                data_out <= data_a;
+            when "001" =>
+                data_out <= data_b;
+            when "010" =>
+                data_out <= data_c;
+            when "011" =>
+                data_out <= data_d;
+            when "100" =>
+                data_out <= data_e;
+            when others =>
+                data_out <= data_a;
+        end case;
     end process;
-    
 end behavioral;

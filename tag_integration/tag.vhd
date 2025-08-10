@@ -63,6 +63,17 @@ architecture rtl of tag is
     return v;
   end function;
 
+  -- rotate-left by r bits
+--  function rotl(v : block_t; r_in : integer) return block_t is
+--    variable n : integer := v'length;
+--    variable r : integer := r_in mod n;
+--  begin
+--    if r = 0 then
+--      return v;
+--    else
+--      return v(n-1-r downto 0) & v(n-1 downto n-r);
+--    end if;
+--  end function;
 -- rotate-left by r_in bits (synthesizable)
 function rotl(v : block_t; r_in : integer) return block_t is
   constant N   : integer := v'length;              -- must be a fixed width type
@@ -164,4 +175,3 @@ begin
   end process;
 
 end rtl;
-

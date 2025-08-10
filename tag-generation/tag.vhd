@@ -1,4 +1,20 @@
--- tag.vhd (simple slices + debug taps)
+-- ============================================================================
+-- TAG GENERATOR MODULE
+--
+-- Why 31-bit record? 
+--   Spec example uses 31-bit records, padded with 0s to align to 4-bit blocks.
+--   Works like 32-bit input except one leading zero nibble is added in padding.
+--
+-- Secret key:
+--   32-bit input; only the top 20 bits used for parameters (flip, swap, shift).
+--   Same key must be used by sender and verifier for tag match.
+--
+-- Ports:
+--   incoming_bits : record input (31 bits, zero-padded MSB as needed)
+--   secret_key    : 32-bit key controlling block ops
+--   output_tag    : computed tag (4 bits default)
+-- ============================================================================
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -47,17 +63,27 @@ architecture rtl of tag is
     return v;
   end function;
 
-  -- rotate-left by r bits
-  function rotl(v : block_t; r_in : integer) return block_t is
-    variable n : integer := v'length;
-    variable r : integer := r_in mod n;
-  begin
-    if r = 0 then
-      return v;
-    else
-      return v(n-1-r downto 0) & v(n-1 downto n-r);
-    end if;
-  end function;
+-- rotate-left by r_in bits (synthesizable)
+function rotl(v : block_t; r_in : integer) return block_t is
+  constant N   : integer := v'length;              -- must be a fixed width type
+  variable r   : integer := r_in mod N;            -- normalize rotate amount
+  variable res : block_t := (others => '0');
+  variable idx : integer;
+begin
+  if r = 0 then
+    return v;
+  end if;
+
+  -- Move each bit to its rotated position.
+  -- Note: loop bound is constant (N), and each assignment is 1 bit wide.
+  for k in 0 to N-1 loop
+    idx := (k + r) mod N;
+    res(idx) := v(k);
+  end loop;
+
+  return res;
+end function;
+
 
 begin
   ------------------------------------------------------------------------------
@@ -96,7 +122,7 @@ begin
       variable tmp : std_logic;
     begin
       if s = 0 then s := n; end if;  -- interpret s=0 as full-block swap
-      for k in 0 to s-1 loop
+      for k in 0 to (tag_size -1) loop
         -- Convert LSB-based position to MSB..LSB string index
         xi := (n - 1) - ((px + k) mod n);
         yi := (n - 1) - ((py + k) mod n);
@@ -138,3 +164,4 @@ begin
   end process;
 
 end rtl;
+

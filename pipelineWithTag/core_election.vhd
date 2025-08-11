@@ -1,8 +1,3 @@
----------------------------------------------------------------------------
--- core_election.vhd - Enhanced Core with Election Tallying System
--- Based on your existing core.vhd with election extensions
----------------------------------------------------------------------------
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
@@ -29,7 +24,6 @@ end core_election;
 
 architecture structural of core_election is
 
--- All your existing component declarations (keeping them identical)
 component program_counter is
     port ( reset    : in  std_logic;
            stall    : in std_logic;
@@ -140,7 +134,6 @@ component tally_table is
            total_candidate_3 : out std_logic_vector(TALLY_WIDTH-1 downto 0) );
 end component;
 
--- All your existing pipeline register components (unchanged)
 component pipeline_reg1_if_id is
     port (
         clk          : in  std_logic;
@@ -269,7 +262,6 @@ component ackn_handler is
         data_out    : out std_logic_vector(N-1 downto 0) );
 end component;
 
--- All your existing signals (keeping them identical)
 signal sig_one_4b                       : std_logic_vector(3 downto 0);
 signal if_sig_next_pc                   : std_logic_vector(3 downto 0);
 signal if_sig_curr_pc                   : std_logic_vector(3 downto 0);

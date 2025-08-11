@@ -8,7 +8,7 @@ entity control_unit_enhanced is
            reg_write  : out std_logic;
            reg_write2 : out std_logic;
            buf_to_reg : out std_logic;
-           -- New election signals
+           -- Election signals
            tally_read : out std_logic;
            tally_write: out std_logic );
 end control_unit_enhanced;
@@ -17,7 +17,6 @@ architecture structural of control_unit_enhanced is
     constant OP_NOOP     : std_logic_vector(3 downto 0) := X"0";
     constant OP_BUFGET   : std_logic_vector(3 downto 0) := X"1";
     constant OP_MEMPUT   : std_logic_vector(3 downto 0) := X"2";
-    constant OP_PAR      : std_logic_vector(3 downto 0) := X"3";
     constant OP_TAG      : std_logic_vector(3 downto 0) := X"4";
     constant OP_ACKN     : std_logic_vector(3 downto 0) := X"5";
     constant OP_RECGET   : std_logic_vector(3 downto 0) := X"6";
@@ -32,11 +31,11 @@ begin
     mem_put    <= '1' when opcode = OP_MEMPUT else '0';
     buf_to_reg <= '1' when (opcode = OP_BUFGET or opcode = OP_RECGET) else '0';
     
-    tally_read  <= '0';  -- Not implemented in this version
+    tally_read  <= '0';  
     tally_write <= '1' when opcode = OP_TALLYUPD else '0';
     
     reg_write  <= '1' when ( opcode = OP_BUFGET or opcode = OP_RECGET or
-                            opcode = OP_PAR or opcode = OP_TAG or
+                            opcode = OP_TAG or
                             opcode = OP_TAGGEN or opcode = OP_TAGCHK ) else '0';
                             
     reg_write2 <= '1' when (opcode = OP_BUFGET or opcode = OP_RECGET) else '0';

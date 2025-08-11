@@ -2,14 +2,12 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.numeric_std.all;
-use IEEE.std_logic_misc.all;
 
 entity alu_election is
     generic ( N        : integer := 16;
               T        : integer := 4;  
               b_size : integer := 31;
               secret_key_width : integer := 32 );
-              -- ----------------------------------
     port ( opcode    : in  std_logic_vector(3 downto 0);
            src_a     : in  std_logic_vector(N-1 downto 0);
            src_b     : in  std_logic_vector(N-1 downto 0);
@@ -26,7 +24,7 @@ end alu_election;
 
 architecture behavioural of alu_election is
 
-    -- MORRIS: Tag generation integration
+    -- Tag generation integration
     component tag is
       generic(
         tag_size  : integer := 4;    -- T
@@ -40,22 +38,15 @@ architecture behavioural of alu_election is
       );
     end component;
     
-    
     signal gen_record : std_logic_vector(b_size-1 downto 0);
     signal p_secret_key : std_logic_vector(secret_key_width-1 downto 0) :=
                             x"003101A0";  -- 32 bits in hex
-    ---------------------------------------------------------------------
-    
-
     signal tag_output : std_logic_vector(T-1 downto 0);
     signal zero : std_logic_vector(N-1 downto 0);
-    signal debug_padded, debug_flipped, debug_swapped, debug_shifted : std_logic_vector(((N+T-1)/T)*T-1 downto 0);
     
-    -- Instruction opcodes (keeping your existing ones + new election ones)
     constant OP_NOOP     : std_logic_vector(3 downto 0) := X"0";
     constant OP_BUFGET   : std_logic_vector(3 downto 0) := X"1";
     constant OP_MEMPUT   : std_logic_vector(3 downto 0) := X"2";
-    constant OP_PAR      : std_logic_vector(3 downto 0) := X"3";
     constant OP_TAG      : std_logic_vector(3 downto 0) := X"4";
     constant OP_ACKN     : std_logic_vector(3 downto 0) := X"5";
     constant OP_RECGET   : std_logic_vector(3 downto 0) := X"6"; -- Get record fields
@@ -69,28 +60,26 @@ architecture behavioural of alu_election is
 begin
     zero <= (others => '0');
     
-    -- Branch logic (same as your original)
+    -- Branch logic
     branch <= '1' when ( (opcode = OP_BEQ and src_a = src_b) or
                          (opcode = OP_BEQZ and src_a = zero) or
                          (opcode = OP_B) ) else '0';
     
-    -- MORRIS: Tag generation integration
+    -- Tag generation integration
     gen_record <= (30 downto 12 => '0') & src_a(11 downto 0);
 
-    
     tag_generation: tag port map (
         incoming_bits => gen_record,
         secret_key    => p_secret_key,
         output_tag    => tag_output
-      );
-    --------------------------------------------------------------  
+    );
 
     alu_process : process (opcode, src_a, src_b, tag_output) is
         variable record_data : std_logic_vector(N-1 downto 0);
         variable received_tag : std_logic_vector(T-1 downto 0);
         variable computed_tag : std_logic_vector(T-1 downto 0);
     begin
-        -- Default outputs
+        -- Default outputs - Set defaults for ALL outputs
         ackn <= '0';
         tag_valid <= '0';
         district_id <= "00";
@@ -100,17 +89,12 @@ begin
         output2 <= (others => '0');
         
         case opcode is
-            when OP_PAR =>
-                output(N-1 downto 1) <= (others => '0');
-                output(0) <= xor_reduce(src_a);
-                
             when OP_TAG =>
                 output(T-1 downto 0) <= tag_output;
                 output(N-1 downto T) <= (others => '0');
                 
             when OP_RECGET =>
-                -- Extract fields from election record
-                -- Format: | district_id(2) | candidate_id(2) | tally(8) | tag(4) |
+                -- Extract fields from election record ONLY during RECGET
                 district_id <= src_a(15 downto 14);      -- Top 2 bits
                 candidate_id <= src_a(13 downto 12);     -- Next 2 bits  
                 tally_increment <= src_a(11 downto 4);   -- Tally (8 bits)
@@ -118,7 +102,7 @@ begin
                 output2 <= X"000" & src_a(3 downto 0);   -- Tag to register
                 
             when OP_TAGGEN =>
-                -- Generate tag using new election algorithm
+                -- Generate tag using election algorithm
                 output(T-1 downto 0) <= tag_output;
                 output(N-1 downto T) <= (others => '0');
                 

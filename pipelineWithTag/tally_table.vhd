@@ -13,7 +13,7 @@ entity tally_table is
            district_id  : in  std_logic_vector(1 downto 0);
            candidate_id : in  std_logic_vector(1 downto 0);
            increment    : in  std_logic_vector(TALLY_WIDTH-1 downto 0);
-           -- Debug outputs (can be removed for final implementation)
+           -- Debug outputs 
            total_candidate_0 : out std_logic_vector(TALLY_WIDTH-1 downto 0);
            total_candidate_1 : out std_logic_vector(TALLY_WIDTH-1 downto 0);
            total_candidate_2 : out std_logic_vector(TALLY_WIDTH-1 downto 0);
@@ -26,7 +26,7 @@ architecture behavioral of tally_table is
     signal tally_mem : tally_array;
 begin
     
-    -- Write process (using falling_edge like your other memories)
+
     process(clk, reset)
         variable district_idx, candidate_idx : integer;
     begin
@@ -36,7 +36,7 @@ begin
                     tally_mem(i)(j) <= (others => '0');
                 end loop;
             end loop;
-        elsif falling_edge(clk) then
+        elsif rising_edge(clk) then
             if write_enable = '1' then
                 district_idx := conv_integer(district_id);
                 candidate_idx := conv_integer(candidate_id);

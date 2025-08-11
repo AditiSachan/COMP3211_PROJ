@@ -10,7 +10,7 @@ entity asp_simple is
               R  : integer := 2 );
     port ( reset                : in  std_logic;
            clk                  : in  std_logic ;
-           -- Single election record input (matches your testbench)
+           -- Single election record input
            election_record_in   : in std_logic_vector(N-1 downto 0);
            record_enable        : in std_logic;
            -- Outputs
